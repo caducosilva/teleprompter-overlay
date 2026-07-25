@@ -37,10 +37,23 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   double _fontSize = 22;
   bool _controlsExpanded = true;
 
+  // Posição/tamanho atuais da janela, em dp — mesma unidade que
+  // moveOverlay/resizeOverlay esperam. Servem só pra acumular o arraste
+  // das alças próprias (ver _buildMoveHandle/_buildResizeHandle);
+  // continuam válidos entre reaberturas porque _resetGeometryState()
+  // busca o valor real da janela toda vez que o roteiro é reenviado.
+  double _dragX = 0;
+  double _dragY = 0;
+  double _boxWidth = 320;
+  double _boxHeight = 520;
+  Size _screenSize = const Size(360, 800);
+
   static const double _textMaxWidth = 280;
   static const double _minSpeed = 6;
   static const double _maxSpeed = 48;
   static const double _speedStep = 3;
+  static const double _minBoxWidth = 220;
+  static const double _minBoxHeight = 160;
 
   @override
   void initState() {
@@ -56,6 +69,26 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     // Geometria já veio certa do main.dart na abertura — só guarda a
     // orientação atual pra comparar depois, sem reaplicar à toa.
     _lastLandscape = _currentLandscape();
+    _resetGeometryState();
+  }
+
+  /// Sincroniza posição/tamanho locais com o que a janela nativa tem agora
+  /// — chamado na primeira abertura e toda vez que o roteiro é reenviado
+  /// (ou seja, toda reabertura), já que main.dart pode ter aplicado uma
+  /// geometria nova (orientação mudou desde a última vez).
+  Future<void> _resetGeometryState() async {
+    final view = PlatformDispatcher.instance.views.first;
+    final logicalSize = view.display.size / view.devicePixelRatio;
+    final geometry = OverlayGeometry.forScreen(logicalSize);
+    final pos = await FlutterOverlayWindow.getOverlayPosition();
+    if (!mounted) return;
+    setState(() {
+      _screenSize = logicalSize;
+      _boxWidth = logicalSize.width;
+      _boxHeight = geometry.height.toDouble();
+      _dragX = pos.x;
+      _dragY = pos.y;
+    });
   }
 
   bool _currentLandscape() {
@@ -99,6 +132,7 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(0);
     }
+    _resetGeometryState();
   }
 
   Future<void> _load() async {
@@ -205,109 +239,166 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
 
     return Material(
       color: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xE603010A),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: const Color(0xFF3D3D6B).withValues(alpha: 0.8),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1E90FF).withValues(alpha: 0.18),
-              blurRadius: 16,
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xE603010A),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF3D3D6B).withValues(alpha: 0.8),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1E90FF).withValues(alpha: 0.18),
+                  blurRadius: 16,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _buildControls(),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final viewH = constraints.maxHeight;
-                  // Topo grande: texto começa na linha de leitura.
-                  // Fundo curto: para no último trecho — sem “vazio infinito”.
-                  final topPad = math.max(viewH * 0.38, 64.0);
-                  final bottomPad = math.max(viewH * 0.12, 36.0);
-                  final width = math.min(_textMaxWidth, constraints.maxWidth);
+            child: Column(
+              children: [
+                _buildControls(),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final viewH = constraints.maxHeight;
+                      // Topo grande: texto começa na linha de leitura.
+                      // Fundo curto: para no último trecho — sem “vazio infinito”.
+                      final topPad = math.max(viewH * 0.38, 64.0);
+                      final bottomPad = math.max(viewH * 0.12, 36.0);
+                      final width = math.min(
+                        _textMaxWidth,
+                        constraints.maxWidth,
+                      );
 
-                  return Align(
-                    alignment: Alignment.topCenter,
-                    child: SizedBox(
-                      width: width,
-                      height: viewH,
-                      child: ShaderMask(
-                        shaderCallback: (rect) {
-                          return const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.white,
-                              Colors.white,
-                              Colors.transparent,
-                            ],
-                            stops: [0.0, 0.10, 0.90, 1.0],
-                          ).createShader(rect);
-                        },
-                        blendMode: BlendMode.dstIn,
-                        child: ScrollConfiguration(
-                          behavior: const _NoGlowScrollBehavior(),
-                          // O dedo funciona mesmo com o auto-scroll rodando:
-                          // um arraste do usuário (dragDetails != null) pausa
-                          // o ticker e, ao soltar (fim da rolagem, incluindo a
-                          // inércia do fling), o auto-scroll retoma dali.
-                          // Os jumpTo() do ticker também emitem notificações,
-                          // mas sempre sem dragDetails, então não interferem.
-                          child: NotificationListener<ScrollNotification>(
-                            onNotification: (notification) {
-                              if (notification is ScrollStartNotification &&
-                                  notification.dragDetails != null) {
-                                _userDragging = true;
-                              } else if (notification
-                                      is ScrollEndNotification &&
-                                  _userDragging) {
-                                _userDragging = false;
-                                _skipNextDt = true;
-                              }
-                              return false;
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: width,
+                          height: viewH,
+                          child: ShaderMask(
+                            shaderCallback: (rect) {
+                              return const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.white,
+                                  Colors.white,
+                                  Colors.transparent,
+                                ],
+                                stops: [0.0, 0.10, 0.90, 1.0],
+                              ).createShader(rect);
                             },
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
-                              physics: const ClampingScrollPhysics(),
-                              padding: EdgeInsets.only(
-                                top: topPad,
-                                bottom: bottomPad,
-                                left: 10,
-                                right: 10,
-                              ),
-                              child: Text(
-                                _text,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFFE8EAF6),
-                                  fontSize: _fontSize,
-                                  height: 1.35,
-                                  fontWeight: FontWeight.w600,
-                                  shadows: const [
-                                    Shadow(
-                                      blurRadius: 8,
-                                      color: Colors.black87,
+                            blendMode: BlendMode.dstIn,
+                            child: ScrollConfiguration(
+                              behavior: const _NoGlowScrollBehavior(),
+                              // O dedo funciona mesmo com o auto-scroll rodando:
+                              // um arraste do usuário (dragDetails != null) pausa
+                              // o ticker e, ao soltar (fim da rolagem, incluindo a
+                              // inércia do fling), o auto-scroll retoma dali.
+                              // Os jumpTo() do ticker também emitem notificações,
+                              // mas sempre sem dragDetails, então não interferem.
+                              child: NotificationListener<ScrollNotification>(
+                                onNotification: (notification) {
+                                  if (notification is ScrollStartNotification &&
+                                      notification.dragDetails != null) {
+                                    _userDragging = true;
+                                  } else if (notification
+                                          is ScrollEndNotification &&
+                                      _userDragging) {
+                                    _userDragging = false;
+                                    _skipNextDt = true;
+                                  }
+                                  return false;
+                                },
+                                child: SingleChildScrollView(
+                                  controller: _scrollController,
+                                  physics: const ClampingScrollPhysics(),
+                                  padding: EdgeInsets.only(
+                                    top: topPad,
+                                    bottom: bottomPad,
+                                    left: 10,
+                                    right: 10,
+                                  ),
+                                  child: Text(
+                                    _text,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: const Color(0xFFE8EAF6),
+                                      fontSize: _fontSize,
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w600,
+                                      shadows: const [
+                                        Shadow(
+                                          blurRadius: 8,
+                                          color: Colors.black87,
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
+          Positioned(right: 0, bottom: 0, child: _buildResizeHandle()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoveHandle() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanUpdate: (details) {
+        _dragX += details.delta.dx;
+        _dragY += details.delta.dy;
+        FlutterOverlayWindow.moveOverlay(OverlayPosition(_dragX, _dragY));
+      },
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 6),
+        child: Icon(Icons.open_with, color: Color(0xFF9FA8DA), size: 20),
+      ),
+    );
+  }
+
+  Widget _buildResizeHandle() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanUpdate: (details) {
+        final maxWidth = _screenSize.width;
+        final maxHeight = _screenSize.height * 0.9;
+        _boxWidth = (_boxWidth + details.delta.dx).clamp(
+          _minBoxWidth,
+          maxWidth,
+        );
+        _boxHeight = (_boxHeight + details.delta.dy).clamp(
+          _minBoxHeight,
+          maxHeight,
+        );
+        FlutterOverlayWindow.resizeOverlay(
+          _boxWidth.round(),
+          _boxHeight.round(),
+          false,
+        );
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.bottomRight,
+        padding: const EdgeInsets.all(4),
+        child: const Icon(
+          Icons.open_in_full,
+          color: Color(0xFF9FA8DA),
+          size: 16,
         ),
       ),
     );
@@ -317,22 +408,19 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0x403D3D6B)),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0x403D3D6B))),
       ),
       child: _controlsExpanded
           ? Row(
               children: [
+                _buildMoveHandle(),
                 IconButton(
                   tooltip: _playing ? 'Pausar' : 'Play',
                   iconSize: 28,
                   color: _playing
                       ? const Color(0xFFB24BF3)
                       : const Color(0xFF1E90FF),
-                  icon: Icon(
-                    _playing ? Icons.pause_circle : Icons.play_circle,
-                  ),
+                  icon: Icon(_playing ? Icons.pause_circle : Icons.play_circle),
                   onPressed: _togglePlay,
                 ),
                 IconButton(
