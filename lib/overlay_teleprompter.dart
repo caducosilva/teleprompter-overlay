@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -21,14 +20,13 @@ class OverlayTeleprompter extends StatefulWidget {
 }
 
 class _OverlayTeleprompterState extends State<OverlayTeleprompter>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin {
   final _scrollController = ScrollController();
   late Ticker _ticker;
   Duration _lastTick = Duration.zero;
   bool _skipNextDt = false;
   bool _userDragging = false;
   StreamSubscription? _overlaySub;
-  bool? _lastLandscape;
 
   String _text = '';
   bool _playing = false;
@@ -40,13 +38,12 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   // Posição/tamanho atuais da janela, em dp — mesma unidade que
   // moveOverlay/resizeOverlay esperam. Servem só pra acumular o arraste
   // das alças próprias (ver _buildMoveHandle/_buildResizeHandle);
-  // continuam válidos entre reaberturas porque _resetGeometryState()
-  // busca o valor real da janela toda vez que o roteiro é reenviado.
-  double _dragX = 0;
-  double _dragY = 0;
-  double _boxWidth = 320;
-  double _boxHeight = 520;
-  Size _screenSize = const Size(360, 800);
+  // ressincronizados toda vez que o roteiro é reenviado (ou seja, toda
+  // reabertura) em _resetGeometryState().
+  double _dragX = OverlayGeometry.standard.position.x;
+  double _dragY = OverlayGeometry.standard.position.y;
+  double _boxWidth = 360;
+  double _boxHeight = OverlayGeometry.standard.height.toDouble();
 
   static const double _textMaxWidth = 280;
   static const double _minSpeed = 6;
@@ -54,55 +51,41 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   static const double _speedStep = 3;
   static const double _minBoxWidth = 220;
   static const double _minBoxHeight = 160;
-  // Teto de segurança: a faixa nunca pode crescer a ponto de tomar a tela
-  // (a janela cresce simétrica a partir do centro, então um teto generoso
-  // vira "tela inteira" rápido). Frações do tamanho da tela.
-  static const double _maxBoxWidthFraction = 0.62;
-  static const double _maxBoxHeightFraction = 0.42;
+  // Teto de segurança fixo (não depende de ler o tamanho da tela, que não
+  // é confiável de dentro da janela de overlay): grande o bastante pra ser
+  // útil, pequeno o bastante pra nunca tomar a tela em nenhum aparelho.
+  static const double _maxBoxWidth = 480;
+  static const double _maxBoxHeight = 420;
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    WidgetsBinding.instance.addObserver(this);
     _ticker = createTicker(_onTick)..start();
     _load();
     // O FlutterEngine do overlay fica em cache e é reaproveitado entre
     // aberturas, então initState só roda na primeira vez. Nas próximas
     // vezes o app manda o roteiro atualizado por aqui.
     _overlaySub = FlutterOverlayWindow.overlayListener.listen(_onShareData);
-    // Geometria já veio certa do main.dart na abertura — só guarda a
-    // orientação atual pra comparar depois, sem reaplicar à toa.
-    _lastLandscape = _currentLandscape();
     _resetGeometryState();
   }
 
-  /// Sincroniza posição/tamanho locais com o que a janela nativa tem agora
-  /// — chamado na primeira abertura e toda vez que o roteiro é reenviado
-  /// (ou seja, toda reabertura), já que main.dart pode ter aplicado uma
-  /// geometria nova (orientação mudou desde a última vez).
+  /// Sincroniza a posição local com a da janela nativa — chamado na
+  /// primeira abertura e toda vez que o roteiro é reenviado (reabertura).
   Future<void> _resetGeometryState() async {
-    final view = PlatformDispatcher.instance.views.first;
-    final logicalSize = view.display.size / view.devicePixelRatio;
-    final geometry = OverlayGeometry.forScreen(logicalSize);
     final pos = await FlutterOverlayWindow.getOverlayPosition();
     if (!mounted) return;
     setState(() {
-      _screenSize = logicalSize;
-      _boxWidth = logicalSize.width;
-      _boxHeight = geometry.height.toDouble();
       _dragX = pos.x;
       _dragY = pos.y;
     });
   }
 
-  /// Escape hatch: volta pro tamanho e posição padrão da orientação atual.
+  /// Escape hatch: volta pro tamanho e posição padrão (centro da tela).
   /// Sempre disponível, mesmo que a faixa tenha sido arrastada/redimensionada
   /// pra um lugar ruim.
   Future<void> _resetSizeAndPosition() async {
-    final view = PlatformDispatcher.instance.views.first;
-    final logicalSize = view.display.size / view.devicePixelRatio;
-    final geometry = OverlayGeometry.forScreen(logicalSize);
+    const geometry = OverlayGeometry.standard;
     await FlutterOverlayWindow.resizeOverlay(
       OverlayGeometry.width,
       geometry.height,
@@ -111,38 +94,11 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     await FlutterOverlayWindow.moveOverlay(geometry.position);
     if (!mounted) return;
     setState(() {
-      _screenSize = logicalSize;
-      _boxWidth = logicalSize.width;
+      _boxWidth = 360;
       _boxHeight = geometry.height.toDouble();
       _dragX = geometry.position.x;
       _dragY = geometry.position.y;
     });
-  }
-
-  bool _currentLandscape() {
-    final view = PlatformDispatcher.instance.views.first;
-    final logicalSize = view.display.size / view.devicePixelRatio;
-    return logicalSize.width > logicalSize.height;
-  }
-
-  @override
-  void didChangeMetrics() {
-    super.didChangeMetrics();
-    // didChangeMetrics também dispara por outros motivos (teclado, insets
-    // de sistema), então só reage quando a orientação de fato virou.
-    final landscape = _currentLandscape();
-    if (landscape == _lastLandscape) return;
-    _lastLandscape = landscape;
-
-    final view = PlatformDispatcher.instance.views.first;
-    final logicalSize = view.display.size / view.devicePixelRatio;
-    final geometry = OverlayGeometry.forScreen(logicalSize);
-    FlutterOverlayWindow.resizeOverlay(
-      OverlayGeometry.width,
-      geometry.height,
-      false,
-    );
-    FlutterOverlayWindow.moveOverlay(geometry.position);
   }
 
   void _onShareData(dynamic message) {
@@ -242,7 +198,6 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _overlaySub?.cancel();
     _ticker.dispose();
     _scrollController.dispose();
@@ -402,18 +357,16 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanUpdate: (details) {
-        final maxWidth = _screenSize.width * _maxBoxWidthFraction;
-        final maxHeight = _screenSize.height * _maxBoxHeightFraction;
         // A janela cresce simétrica a partir do centro (gravity center):
         // cada dp a mais na largura/altura move a borda só a metade
         // disso. Multiplica por 2 pra a alça acompanhar o dedo 1 pra 1.
         _boxWidth = (_boxWidth + details.delta.dx * 2).clamp(
           _minBoxWidth,
-          maxWidth,
+          _maxBoxWidth,
         );
         _boxHeight = (_boxHeight + details.delta.dy * 2).clamp(
           _minBoxHeight,
-          maxHeight,
+          _maxBoxHeight,
         );
         FlutterOverlayWindow.resizeOverlay(
           _boxWidth.round(),

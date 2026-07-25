@@ -123,10 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Captura o tamanho da tela antes de qualquer 'await': depois disso o
-    // 'context' pode não valer mais a pena consultar entre os gaps async.
-    final screenSize = MediaQuery.of(context).size;
-
     setState(() => _busy = true);
     try {
       await ScriptStore.saveText(text);
@@ -159,16 +155,15 @@ class _HomeScreenState extends State<HomeScreen> {
       // Overlay ativo → Activity some. Só o teleprompter fica na tela.
       await ScriptStore.setStayInBackground(true);
 
-      // Geometria calculada pra orientação atual (retrato ou paisagem) —
-      // o overlay_teleprompter.dart reaplica isso sozinho se o celular
-      // girar depois de aberto.
-      final geometry = OverlayGeometry.forScreen(screenSize);
+      // Geometria fixa e sempre centralizada — ver overlay_geometry.dart
+      // pra entender por que não depende de detectar orientação.
+      const geometry = OverlayGeometry.standard;
 
       await FlutterOverlayWindow.showOverlay(
         height: geometry.height,
         width: OverlayGeometry.width,
         alignment: OverlayAlignment.center,
-        // Começa perto da lente frontal (retrato) ou no centro (paisagem).
+        // Sempre no centro da tela, na altura do olho, em pé ou deitado.
         // O arraste nativo do plugin fica desligado de propósito: ele
         // reage a QUALQUER arraste na janela, o que brigaria com o
         // scroll manual do dedo no texto. Mover/redimensionar é feito
