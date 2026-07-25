@@ -54,6 +54,11 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   static const double _speedStep = 3;
   static const double _minBoxWidth = 220;
   static const double _minBoxHeight = 160;
+  // Teto de segurança: a faixa nunca pode crescer a ponto de tomar a tela
+  // (a janela cresce simétrica a partir do centro, então um teto generoso
+  // vira "tela inteira" rápido). Frações do tamanho da tela.
+  static const double _maxBoxWidthFraction = 0.62;
+  static const double _maxBoxHeightFraction = 0.42;
 
   @override
   void initState() {
@@ -88,6 +93,29 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
       _boxHeight = geometry.height.toDouble();
       _dragX = pos.x;
       _dragY = pos.y;
+    });
+  }
+
+  /// Escape hatch: volta pro tamanho e posição padrão da orientação atual.
+  /// Sempre disponível, mesmo que a faixa tenha sido arrastada/redimensionada
+  /// pra um lugar ruim.
+  Future<void> _resetSizeAndPosition() async {
+    final view = PlatformDispatcher.instance.views.first;
+    final logicalSize = view.display.size / view.devicePixelRatio;
+    final geometry = OverlayGeometry.forScreen(logicalSize);
+    await FlutterOverlayWindow.resizeOverlay(
+      OverlayGeometry.width,
+      geometry.height,
+      false,
+    );
+    await FlutterOverlayWindow.moveOverlay(geometry.position);
+    if (!mounted) return;
+    setState(() {
+      _screenSize = logicalSize;
+      _boxWidth = logicalSize.width;
+      _boxHeight = geometry.height.toDouble();
+      _dragX = geometry.position.x;
+      _dragY = geometry.position.y;
     });
   }
 
@@ -374,13 +402,16 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanUpdate: (details) {
-        final maxWidth = _screenSize.width;
-        final maxHeight = _screenSize.height * 0.9;
-        _boxWidth = (_boxWidth + details.delta.dx).clamp(
+        final maxWidth = _screenSize.width * _maxBoxWidthFraction;
+        final maxHeight = _screenSize.height * _maxBoxHeightFraction;
+        // A janela cresce simétrica a partir do centro (gravity center):
+        // cada dp a mais na largura/altura move a borda só a metade
+        // disso. Multiplica por 2 pra a alça acompanhar o dedo 1 pra 1.
+        _boxWidth = (_boxWidth + details.delta.dx * 2).clamp(
           _minBoxWidth,
           maxWidth,
         );
-        _boxHeight = (_boxHeight + details.delta.dy).clamp(
+        _boxHeight = (_boxHeight + details.delta.dy * 2).clamp(
           _minBoxHeight,
           maxHeight,
         );
@@ -414,6 +445,13 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
           ? Row(
               children: [
                 _buildMoveHandle(),
+                IconButton(
+                  tooltip: 'Restaurar tamanho e posição',
+                  iconSize: 18,
+                  color: const Color(0xFF9FA8DA),
+                  icon: const Icon(Icons.restore_page_outlined),
+                  onPressed: _resetSizeAndPosition,
+                ),
                 IconButton(
                   tooltip: _playing ? 'Pausar' : 'Play',
                   iconSize: 28,
