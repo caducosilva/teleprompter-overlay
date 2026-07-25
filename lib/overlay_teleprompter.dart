@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'overlay_geometry.dart';
 import 'script_store.dart';
 
 /// Teleprompter flutuante: faixa estreita no centro, play/pausa, velocidade,
@@ -19,13 +21,14 @@ class OverlayTeleprompter extends StatefulWidget {
 }
 
 class _OverlayTeleprompterState extends State<OverlayTeleprompter>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _scrollController = ScrollController();
   late Ticker _ticker;
   Duration _lastTick = Duration.zero;
   bool _skipNextDt = false;
   bool _userDragging = false;
   StreamSubscription? _overlaySub;
+  bool? _lastLandscape;
 
   String _text = '';
   bool _playing = false;
@@ -43,12 +46,42 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    WidgetsBinding.instance.addObserver(this);
     _ticker = createTicker(_onTick)..start();
     _load();
     // O FlutterEngine do overlay fica em cache e é reaproveitado entre
     // aberturas, então initState só roda na primeira vez. Nas próximas
     // vezes o app manda o roteiro atualizado por aqui.
     _overlaySub = FlutterOverlayWindow.overlayListener.listen(_onShareData);
+    // Geometria já veio certa do main.dart na abertura — só guarda a
+    // orientação atual pra comparar depois, sem reaplicar à toa.
+    _lastLandscape = _currentLandscape();
+  }
+
+  bool _currentLandscape() {
+    final view = PlatformDispatcher.instance.views.first;
+    final logicalSize = view.display.size / view.devicePixelRatio;
+    return logicalSize.width > logicalSize.height;
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // didChangeMetrics também dispara por outros motivos (teclado, insets
+    // de sistema), então só reage quando a orientação de fato virou.
+    final landscape = _currentLandscape();
+    if (landscape == _lastLandscape) return;
+    _lastLandscape = landscape;
+
+    final view = PlatformDispatcher.instance.views.first;
+    final logicalSize = view.display.size / view.devicePixelRatio;
+    final geometry = OverlayGeometry.forScreen(logicalSize);
+    FlutterOverlayWindow.resizeOverlay(
+      OverlayGeometry.width,
+      geometry.height,
+      false,
+    );
+    FlutterOverlayWindow.moveOverlay(geometry.position);
   }
 
   void _onShareData(dynamic message) {
@@ -147,6 +180,7 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _overlaySub?.cancel();
     _ticker.dispose();
     _scrollController.dispose();

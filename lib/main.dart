@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
+import 'overlay_geometry.dart';
 import 'overlay_teleprompter.dart';
 import 'script_store.dart';
+import 'services/update_service.dart';
 
 const _appChannel = MethodChannel('com.abobicaduco.teleprompter_overlay/app');
 
@@ -87,6 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final active = await FlutterOverlayWindow.isActive();
     if (!mounted) return;
     setState(() => _overlayActive = active);
+    // Checa por atualização toda vez que a tela do app abre (no máximo 1x
+    // por dia por versão — ver update_service.dart).
+    unawaited(UpdateService.checkForUpdate(context));
   }
 
   @override
@@ -115,6 +122,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
+
+    // Captura o tamanho da tela antes de qualquer 'await': depois disso o
+    // 'context' pode não valer mais a pena consultar entre os gaps async.
+    final screenSize = MediaQuery.of(context).size;
 
     setState(() => _busy = true);
     try {
@@ -148,14 +159,19 @@ class _HomeScreenState extends State<HomeScreen> {
       // Overlay ativo → Activity some. Só o teleprompter fica na tela.
       await ScriptStore.setStayInBackground(true);
 
+      // Geometria calculada pra orientação atual (retrato ou paisagem) —
+      // o overlay_teleprompter.dart reaplica isso sozinho se o celular
+      // girar depois de aberto.
+      final geometry = OverlayGeometry.forScreen(screenSize);
+
       await FlutterOverlayWindow.showOverlay(
-        height: 520,
-        width: WindowSize.matchParent,
+        height: geometry.height,
+        width: OverlayGeometry.width,
         alignment: OverlayAlignment.center,
-        // Fixo sempre no mesmo lugar (drag desativado): um pouco acima do
-        // centro, perto da lente frontal, pra parecer que olha pra quem
-        // assiste em vez de ficar lendo de um canto.
-        startPosition: const OverlayPosition(0, -160),
+        // Fixo sempre no mesmo lugar (drag desativado): perto da lente
+        // frontal, pra parecer que olha pra quem assiste em vez de ficar
+        // lendo de um canto.
+        startPosition: geometry.position,
         enableDrag: false,
         flag: OverlayFlag.defaultFlag,
         overlayTitle: 'PromptCue',
