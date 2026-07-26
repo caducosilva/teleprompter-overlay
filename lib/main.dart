@@ -164,11 +164,11 @@ class _HomeScreenState extends State<HomeScreen> {
         width: OverlayGeometry.width,
         alignment: OverlayAlignment.center,
         // Sempre no centro da tela, na altura do olho, em pé ou deitado.
-        // O arraste nativo do plugin fica desligado de propósito: ele
-        // reage a QUALQUER arraste na janela, o que brigaria com o
-        // scroll manual do dedo no texto. Mover/redimensionar é feito
-        // por alças próprias em overlay_teleprompter.dart (moveOverlay/
-        // resizeOverlay), que não interferem no scroll.
+        // Tamanho fixo (largura e altura não mudam) — só a posição pode
+        // ser ajustada, arrastando pela alça própria em
+        // overlay_teleprompter.dart. O arraste nativo do plugin fica
+        // desligado de propósito: ele reage a QUALQUER arraste na janela,
+        // o que brigaria com o scroll manual do dedo no texto.
         startPosition: geometry.position,
         enableDrag: false,
         flag: OverlayFlag.defaultFlag,

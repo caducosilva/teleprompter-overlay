@@ -35,27 +35,18 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   double _fontSize = 22;
   bool _controlsExpanded = true;
 
-  // Posição/tamanho atuais da janela, em dp — mesma unidade que
-  // moveOverlay/resizeOverlay esperam. Servem só pra acumular o arraste
-  // das alças próprias (ver _buildMoveHandle/_buildResizeHandle);
-  // ressincronizados toda vez que o roteiro é reenviado (ou seja, toda
-  // reabertura) em _resetGeometryState().
+  // Posição atual da janela, em dp — mesma unidade que moveOverlay espera.
+  // Serve só pra acumular o arraste da alça de mover (ver _buildMoveHandle);
+  // ressincronizada toda vez que o roteiro é reenviado (ou seja, toda
+  // reabertura) em _resetGeometryState(). Tamanho é sempre fixo (ver
+  // overlay_geometry.dart) — só a posição pode ser ajustada.
   double _dragX = OverlayGeometry.standard.position.x;
   double _dragY = OverlayGeometry.standard.position.y;
-  double _boxWidth = 360;
-  double _boxHeight = OverlayGeometry.standard.height.toDouble();
 
   static const double _textMaxWidth = 280;
   static const double _minSpeed = 6;
   static const double _maxSpeed = 48;
   static const double _speedStep = 3;
-  static const double _minBoxWidth = 220;
-  static const double _minBoxHeight = 160;
-  // Teto de segurança fixo (não depende de ler o tamanho da tela, que não
-  // é confiável de dentro da janela de overlay): grande o bastante pra ser
-  // útil, pequeno o bastante pra nunca tomar a tela em nenhum aparelho.
-  static const double _maxBoxWidth = 480;
-  static const double _maxBoxHeight = 420;
 
   @override
   void initState() {
@@ -81,21 +72,13 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     });
   }
 
-  /// Escape hatch: volta pro tamanho e posição padrão (centro da tela).
-  /// Sempre disponível, mesmo que a faixa tenha sido arrastada/redimensionada
-  /// pra um lugar ruim.
-  Future<void> _resetSizeAndPosition() async {
+  /// Escape hatch: volta pro centro da tela. Sempre disponível, mesmo que
+  /// a faixa tenha sido arrastada pra um lugar ruim.
+  Future<void> _resetPosition() async {
     const geometry = OverlayGeometry.standard;
-    await FlutterOverlayWindow.resizeOverlay(
-      OverlayGeometry.width,
-      geometry.height,
-      false,
-    );
     await FlutterOverlayWindow.moveOverlay(geometry.position);
     if (!mounted) return;
     setState(() {
-      _boxWidth = 360;
-      _boxHeight = geometry.height.toDouble();
       _dragX = geometry.position.x;
       _dragY = geometry.position.y;
     });
@@ -222,118 +205,110 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
 
     return Material(
       color: Colors.transparent,
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xE603010A),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: const Color(0xFF3D3D6B).withValues(alpha: 0.8),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1E90FF).withValues(alpha: 0.18),
-                  blurRadius: 16,
-                ),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xE603010A),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xFF3D3D6B).withValues(alpha: 0.8),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1E90FF).withValues(alpha: 0.18),
+              blurRadius: 16,
             ),
-            child: Column(
-              children: [
-                _buildControls(),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final viewH = constraints.maxHeight;
-                      // Topo grande: texto começa na linha de leitura.
-                      // Fundo curto: para no último trecho — sem “vazio infinito”.
-                      final topPad = math.max(viewH * 0.38, 64.0);
-                      final bottomPad = math.max(viewH * 0.12, 36.0);
-                      final width = math.min(
-                        _textMaxWidth,
-                        constraints.maxWidth,
-                      );
+          ],
+        ),
+        child: Column(
+          children: [
+            _buildControls(),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final viewH = constraints.maxHeight;
+                  // Topo grande: texto começa na linha de leitura.
+                  // Fundo curto: para no último trecho — sem “vazio infinito”.
+                  final topPad = math.max(viewH * 0.38, 64.0);
+                  final bottomPad = math.max(viewH * 0.12, 36.0);
+                  final width = math.min(_textMaxWidth, constraints.maxWidth);
 
-                      return Align(
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: width,
-                          height: viewH,
-                          child: ShaderMask(
-                            shaderCallback: (rect) {
-                              return const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.white,
-                                  Colors.white,
-                                  Colors.transparent,
-                                ],
-                                stops: [0.0, 0.10, 0.90, 1.0],
-                              ).createShader(rect);
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      width: width,
+                      height: viewH,
+                      child: ShaderMask(
+                        shaderCallback: (rect) {
+                          return const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                            ],
+                            stops: [0.0, 0.10, 0.90, 1.0],
+                          ).createShader(rect);
+                        },
+                        blendMode: BlendMode.dstIn,
+                        child: ScrollConfiguration(
+                          behavior: const _NoGlowScrollBehavior(),
+                          // O dedo funciona mesmo com o auto-scroll rodando:
+                          // um arraste do usuário (dragDetails != null) pausa
+                          // o ticker e, ao soltar (fim da rolagem, incluindo a
+                          // inércia do fling), o auto-scroll retoma dali.
+                          // Os jumpTo() do ticker também emitem notificações,
+                          // mas sempre sem dragDetails, então não interferem.
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              if (notification is ScrollStartNotification &&
+                                  notification.dragDetails != null) {
+                                _userDragging = true;
+                              } else if (notification
+                                      is ScrollEndNotification &&
+                                  _userDragging) {
+                                _userDragging = false;
+                                _skipNextDt = true;
+                              }
+                              return false;
                             },
-                            blendMode: BlendMode.dstIn,
-                            child: ScrollConfiguration(
-                              behavior: const _NoGlowScrollBehavior(),
-                              // O dedo funciona mesmo com o auto-scroll rodando:
-                              // um arraste do usuário (dragDetails != null) pausa
-                              // o ticker e, ao soltar (fim da rolagem, incluindo a
-                              // inércia do fling), o auto-scroll retoma dali.
-                              // Os jumpTo() do ticker também emitem notificações,
-                              // mas sempre sem dragDetails, então não interferem.
-                              child: NotificationListener<ScrollNotification>(
-                                onNotification: (notification) {
-                                  if (notification is ScrollStartNotification &&
-                                      notification.dragDetails != null) {
-                                    _userDragging = true;
-                                  } else if (notification
-                                          is ScrollEndNotification &&
-                                      _userDragging) {
-                                    _userDragging = false;
-                                    _skipNextDt = true;
-                                  }
-                                  return false;
-                                },
-                                child: SingleChildScrollView(
-                                  controller: _scrollController,
-                                  physics: const ClampingScrollPhysics(),
-                                  padding: EdgeInsets.only(
-                                    top: topPad,
-                                    bottom: bottomPad,
-                                    left: 10,
-                                    right: 10,
-                                  ),
-                                  child: Text(
-                                    _text,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: const Color(0xFFE8EAF6),
-                                      fontSize: _fontSize,
-                                      height: 1.35,
-                                      fontWeight: FontWeight.w600,
-                                      shadows: const [
-                                        Shadow(
-                                          blurRadius: 8,
-                                          color: Colors.black87,
-                                        ),
-                                      ],
+                            child: SingleChildScrollView(
+                              controller: _scrollController,
+                              physics: const ClampingScrollPhysics(),
+                              padding: EdgeInsets.only(
+                                top: topPad,
+                                bottom: bottomPad,
+                                left: 10,
+                                right: 10,
+                              ),
+                              child: Text(
+                                _text,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFFE8EAF6),
+                                  fontSize: _fontSize,
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: const [
+                                    Shadow(
+                                      blurRadius: 8,
+                                      color: Colors.black87,
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          Positioned(right: 0, bottom: 0, child: _buildResizeHandle()),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -353,41 +328,6 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     );
   }
 
-  Widget _buildResizeHandle() {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onPanUpdate: (details) {
-        // A janela cresce simétrica a partir do centro (gravity center):
-        // cada dp a mais na largura/altura move a borda só a metade
-        // disso. Multiplica por 2 pra a alça acompanhar o dedo 1 pra 1.
-        _boxWidth = (_boxWidth + details.delta.dx * 2).clamp(
-          _minBoxWidth,
-          _maxBoxWidth,
-        );
-        _boxHeight = (_boxHeight + details.delta.dy * 2).clamp(
-          _minBoxHeight,
-          _maxBoxHeight,
-        );
-        FlutterOverlayWindow.resizeOverlay(
-          _boxWidth.round(),
-          _boxHeight.round(),
-          false,
-        );
-      },
-      child: Container(
-        width: 28,
-        height: 28,
-        alignment: Alignment.bottomRight,
-        padding: const EdgeInsets.all(4),
-        child: const Icon(
-          Icons.open_in_full,
-          color: Color(0xFF9FA8DA),
-          size: 16,
-        ),
-      ),
-    );
-  }
-
   Widget _buildControls() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -399,11 +339,11 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
               children: [
                 _buildMoveHandle(),
                 IconButton(
-                  tooltip: 'Restaurar tamanho e posição',
+                  tooltip: 'Voltar pro centro',
                   iconSize: 18,
                   color: const Color(0xFF9FA8DA),
                   icon: const Icon(Icons.restore_page_outlined),
-                  onPressed: _resetSizeAndPosition,
+                  onPressed: _resetPosition,
                 ),
                 IconButton(
                   tooltip: _playing ? 'Pausar' : 'Play',
