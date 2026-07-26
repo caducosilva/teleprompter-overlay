@@ -43,6 +43,13 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
   double _dragX = OverlayGeometry.standard.position.x;
   double _dragY = OverlayGeometry.standard.position.y;
 
+  // Posição "correta" (altura do olho pra orientação atual), calculada
+  // pela Activity normal do app (main.dart) e enviada junto com o
+  // roteiro — a janela de overlay não tem como calcular isso sozinha de
+  // forma confiável. Usada pelo botão de "voltar pro lugar certo".
+  double _resetX = OverlayGeometry.standard.position.x;
+  double _resetY = OverlayGeometry.standard.position.y;
+
   static const double _textMaxWidth = 280;
   static const double _minSpeed = 6;
   static const double _maxSpeed = 48;
@@ -72,15 +79,16 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     });
   }
 
-  /// Escape hatch: volta pro centro da tela. Sempre disponível, mesmo que
-  /// a faixa tenha sido arrastada pra um lugar ruim.
+  /// Escape hatch: volta pra posição na altura do olho (ver _resetX/_resetY).
+  /// Sempre disponível, mesmo que a faixa tenha sido arrastada pra um
+  /// lugar ruim.
   Future<void> _resetPosition() async {
-    const geometry = OverlayGeometry.standard;
-    await FlutterOverlayWindow.moveOverlay(geometry.position);
+    final position = OverlayPosition(_resetX, _resetY);
+    await FlutterOverlayWindow.moveOverlay(position);
     if (!mounted) return;
     setState(() {
-      _dragX = geometry.position.x;
-      _dragY = geometry.position.y;
+      _dragX = _resetX;
+      _dragY = _resetY;
     });
   }
 
@@ -89,12 +97,16 @@ class _OverlayTeleprompterState extends State<OverlayTeleprompter>
     final text = message['text'];
     if (text is! String) return;
     if (!mounted) return;
+    final resetX = message['resetX'];
+    final resetY = message['resetY'];
     setState(() {
       _text = text.trim().isEmpty
           ? 'Cole um roteiro no app PromptCue e toque em Abrir teleprompter.'
           : text;
       _playing = false;
       _controlsExpanded = true;
+      if (resetX is num) _resetX = resetX.toDouble();
+      if (resetY is num) _resetY = resetY.toDouble();
     });
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(0);

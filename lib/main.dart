@@ -123,6 +123,15 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    // Mede a folga real da câmera/barra de status antes de qualquer
+    // 'await': depois disso o 'context' pode não valer mais a pena
+    // consultar entre os gaps async.
+    final media = MediaQuery.of(context);
+    final geometry = OverlayGeometry.forEyeLevel(
+      screenSize: media.size,
+      safePadding: media.padding,
+    );
+
     setState(() => _busy = true);
     try {
       await ScriptStore.saveText(text);
@@ -155,20 +164,18 @@ class _HomeScreenState extends State<HomeScreen> {
       // Overlay ativo → Activity some. Só o teleprompter fica na tela.
       await ScriptStore.setStayInBackground(true);
 
-      // Geometria fixa e sempre centralizada — ver overlay_geometry.dart
-      // pra entender por que não depende de detectar orientação.
-      const geometry = OverlayGeometry.standard;
-
       await FlutterOverlayWindow.showOverlay(
         height: geometry.height,
         width: OverlayGeometry.width,
         alignment: OverlayAlignment.center,
-        // Sempre no centro da tela, na altura do olho, em pé ou deitado.
-        // Tamanho fixo (largura e altura não mudam) — só a posição pode
-        // ser ajustada, arrastando pela alça própria em
-        // overlay_teleprompter.dart. O arraste nativo do plugin fica
-        // desligado de propósito: ele reage a QUALQUER arraste na janela,
-        // o que brigaria com o scroll manual do dedo no texto.
+        // Posição calculada pra ficar na altura do olho olhando pra lente
+        // frontal (perto do furo da câmera, em retrato ou paisagem — ver
+        // overlay_geometry.dart). Tamanho fixo (largura e altura não
+        // mudam) — só a posição pode ser ajustada, arrastando pela alça
+        // própria em overlay_teleprompter.dart. O arraste nativo do
+        // plugin fica desligado de propósito: ele reage a QUALQUER
+        // arraste na janela, o que brigaria com o scroll manual do dedo
+        // no texto.
         startPosition: geometry.position,
         enableDrag: false,
         flag: OverlayFlag.defaultFlag,
@@ -180,8 +187,14 @@ class _HomeScreenState extends State<HomeScreen> {
       // O overlay reaproveita o mesmo FlutterEngine entre aberturas, então
       // ele só relê o SharedPreferences sozinho na primeiríssima vez. Nas
       // próximas, manda o roteiro atual direto pra ele não ficar com texto
-      // velho.
-      await FlutterOverlayWindow.shareData({'text': text});
+      // velho. Manda também a posição calculada agora, pra o botão de
+      // "voltar pro centro" do overlay saber pra onde voltar sem precisar
+      // recalcular nada (ele não tem como medir isso de forma confiável).
+      await FlutterOverlayWindow.shareData({
+        'text': text,
+        'resetX': geometry.position.x,
+        'resetY': geometry.position.y,
+      });
 
       // Fecha a UI do app; o serviço do overlay continua sozinho.
       await Future<void>.delayed(const Duration(milliseconds: 150));
