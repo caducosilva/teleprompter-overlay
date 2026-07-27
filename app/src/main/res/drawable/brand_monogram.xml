@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="30dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Monograma caducosilva: o "C" com a orbita inclinada em volta. -->
+    <group
+        android:pivotX="24"
+        android:pivotY="24"
+        android:rotation="-22">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M2,24 a22,10 0 1,0 44,0 a22,10 0 1,0 -44,0"
+            android:strokeColor="#B24BF3"
+            android:strokeWidth="1.6" />
+    </group>
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M33,16 A11,11 0 1,0 33,32"
+        android:strokeColor="#1E90FF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+
+</vector>

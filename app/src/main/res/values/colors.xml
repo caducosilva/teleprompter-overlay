@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta espacial caducosilva. -->
+    <color name="space_black">#FF03010A</color>
+    <color name="space_surface">#FF0F0F2E</color>
+    <color name="space_border">#FF3D3D6B</color>
+    <color name="stellar_blue">#FF1E90FF</color>
+    <color name="stellar_purple">#FFB24BF3</color>
+    <color name="text_primary">#FFE8EAF6</color>
+    <color name="text_muted">#FF9FA8DA</color>
+
+    <!-- Fundo da faixa: escuro e quase opaco, pra o texto continuar legível
+         por cima do preview claro da câmera. -->
+    <color name="overlay_background">#F203010A</color>
+
+    <color name="ic_launcher_background">#03010A</color>
+</resources>

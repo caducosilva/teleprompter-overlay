@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selo da marca caducosilva: monograma em órbita + wordmark + contato. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:contentDescription="@string/brand_wordmark"
+        android:src="@drawable/brand_monogram" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:orientation="vertical">
+
+        <com.abobicaduco.teleprompter_overlay.brand.StellarGradientTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/orbitron"
+            android:fontVariationSettings="'wght' 900"
+            android:letterSpacing="0.16"
+            android:text="@string/brand_wordmark"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/brand_contact"
+            android:textColor="@color/text_muted"
+            android:textSize="9sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

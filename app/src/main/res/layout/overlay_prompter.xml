@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A moldura (FrameLayout) tem o tamanho da janela; o conteúdo tem sempre o
+  tamanho "em pé" e é girado pelo PrompterService quando o aparelho está
+  deitado. Por isso os dois existem separados: girar em torno do centro só
+  encaixa direito se o filho estiver centralizado na moldura.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false">
+
+    <LinearLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_overlay_band"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="2dp">
+
+            <ImageButton
+                android:id="@+id/drag"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/drag"
+                android:src="@drawable/ic_drag" />
+
+            <ImageButton
+                android:id="@+id/play"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/play"
+                android:src="@drawable/ic_play" />
+
+            <TextView
+                android:id="@+id/speed_down"
+                style="@style/OverlayTextButton"
+                android:contentDescription="@string/speed_down"
+                android:text="–" />
+
+            <TextView
+                android:id="@+id/speed_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="22dp"
+                android:gravity="center"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="22" />
+
+            <TextView
+                android:id="@+id/speed_up"
+                style="@style/OverlayTextButton"
+                android:contentDescription="@string/speed_up"
+                android:text="+" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/font_down"
+                style="@style/OverlayTextButton"
+                android:contentDescription="@string/font_down"
+                android:textSize="13sp"
+                android:text="A–" />
+
+            <TextView
+                android:id="@+id/font_up"
+                style="@style/OverlayTextButton"
+                android:contentDescription="@string/font_up"
+                android:textSize="17sp"
+                android:text="A+" />
+
+            <ImageButton
+                android:id="@+id/recenter"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/recenter"
+                android:src="@drawable/ic_recenter" />
+
+            <ImageButton
+                android:id="@+id/close"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/close"
+                android:src="@drawable/ic_close" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/space_border" />
+
+        <com.abobicaduco.teleprompter_overlay.PrompterScrollView
+            android:id="@+id/scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fadingEdgeLength="20dp"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="10dp"
+            android:requiresFadingEdge="vertical"
+            android:scrollbars="none">
+
+            <TextView
+                android:id="@+id/text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:lineSpacingMultiplier="1.3"
+                android:shadowColor="#CC000000"
+                android:shadowRadius="6"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                tools:text="Roteiro do vídeo…" />
+
+        </com.abobicaduco.teleprompter_overlay.PrompterScrollView>
+
+    </LinearLayout>
+
+</FrameLayout>

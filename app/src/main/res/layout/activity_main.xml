@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/space_black"
+    tools:context=".MainActivity">
+
+    <!-- Marca d'água: sangra até as bordas, fora do recuo das barras. -->
+    <com.abobicaduco.teleprompter_overlay.brand.BrandWatermarkView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Recebe o recuo das barras do sistema (ver MainActivity). -->
+    <FrameLayout
+        android:id="@+id/body"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/orbitron"
+                android:fontVariationSettings="'wght' 700"
+                android:letterSpacing="0.08"
+                android:text="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:lineSpacingMultiplier="1.3"
+                android:text="@string/editor_intro"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/script"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="16dp"
+                android:layout_weight="1"
+                android:autofillHints=""
+                android:background="@drawable/bg_editor_field"
+                android:gravity="top|start"
+                android:hint="@string/editor_hint"
+                android:inputType="textMultiLine|textCapSentences"
+                android:lineSpacingMultiplier="1.25"
+                android:padding="14dp"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/open"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:backgroundTint="@color/stellar_blue"
+                android:paddingVertical="12dp"
+                android:text="@string/open_prompter"
+                android:textColor="@color/space_black"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/close"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/close_prompter"
+                android:textColor="@color/text_muted" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingMultiplier="1.25"
+                android:text="@string/editor_footer"
+                android:textAlignment="center"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+
+            <include
+                layout="@layout/brand_seal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="12dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</FrameLayout>

@@ -9,7 +9,6 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.44.2'
   JAVA_VERSION: '17'
 
 jobs:
@@ -30,50 +29,38 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Decode keystore from secret
         run: |
-          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/teleprompter_overlay-release.jks
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/teleprompter_overlay-release.jks
 
       - name: Create key.properties
         run: |
-          cat > android/key.properties << EOF
+          cat > key.properties << EOF
           storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
           keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
           keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
           storeFile=teleprompter_overlay-release.jks
           EOF
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze code
-        run: flutter analyze --no-fatal-infos
-
-      - name: Run tests
-        run: flutter test
+      - name: Lint
+        run: ./gradlew :app:lintRelease
 
       - name: Build APK (release)
-        run: flutter build apk --release
+        run: ./gradlew :app:assembleRelease
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: app/build/outputs/apk/release/app-release.apk
           retention-days: 30
 
-      # Cria a Release no GitHub em pushes de tag v* — é o que o app checa
-      # via UpdateService pra avisar sobre atualização.
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
