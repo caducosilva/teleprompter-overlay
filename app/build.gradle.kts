@@ -23,8 +23,8 @@ android {
         applicationId = "com.abobicaduco.teleprompter_overlay"
         minSdk = 30
         targetSdk = 36
-        versionCode = 21
-        versionName = "2.0.1"
+        versionCode = 22
+        versionName = "2.0.2"
     }
 
     signingConfigs {

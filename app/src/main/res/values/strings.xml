@@ -4,12 +4,12 @@
 
     <string name="editor_hint">Cole ou digite o roteiro aqui…</string>
     <string name="editor_intro">Cole o roteiro e toque em abrir. O PromptCue sai da frente e deixa só a faixa por cima da câmera.</string>
-    <string name="editor_footer">A faixa gira junto com o aparelho, mesmo quando a Câmera trava a tela em pé. Arraste pela alça ⠿ pra mudar de lugar — cada orientação lembra a sua.</string>
+    <string name="editor_footer">A faixa gira junto com o aparelho, mesmo quando a Câmera trava a tela em pé. Arraste pela alça pra mudar de lugar. Cada orientação lembra a sua.</string>
     <string name="open_prompter">Abrir teleprompter</string>
     <string name="reopen_prompter">Reabrir teleprompter</string>
     <string name="close_prompter">Fechar teleprompter</string>
 
-    <string name="battery_fix">⚡ Impedir o Android de fechar a faixa</string>
+    <string name="battery_fix">Impedir o Android de fechar a faixa</string>
     <string name="battery_explain">Na tela que abrir, escolha PromptCue → Não otimizar. Sem isso o sistema derruba a faixa depois de alguns minutos.</string>
 
     <string name="empty_script">Cole um roteiro antes de abrir.</string>
