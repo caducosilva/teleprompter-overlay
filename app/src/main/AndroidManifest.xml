@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- O gerenciamento de energia da Samsung encerra o servico depois de
+         alguns minutos; sem a isencao a faixa some no meio da gravacao. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="true"
@@ -25,11 +28,16 @@
         </activity>
 
         <!-- Foreground service que segura a faixa flutuante. specialUse
-             porque o Android nao tem um tipo proprio pra overlay de UI. -->
+             porque o Android nao tem um tipo proprio pra overlay de UI.
+
+             stopWithTask=false e essencial: sem isso, limpar o PromptCue da
+             lista de recentes (ou o Samsung fazer isso sozinho) derruba a
+             faixa no meio da gravacao. -->
         <service
             android:name=".PrompterService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Teleprompter flutuante sobre a camera nativa e outros apps" />

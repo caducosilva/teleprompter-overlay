@@ -79,6 +79,17 @@
                 android:text="@string/close_prompter"
                 android:textColor="@color/text_muted" />
 
+            <!-- Só aparece enquanto o Android ainda pode encerrar o serviço. -->
+            <Button
+                android:id="@+id/battery"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/battery_fix"
+                android:textColor="@color/stellar_purple"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

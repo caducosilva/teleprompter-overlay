@@ -9,6 +9,9 @@
     <string name="reopen_prompter">Reabrir teleprompter</string>
     <string name="close_prompter">Fechar teleprompter</string>
 
+    <string name="battery_fix">⚡ Impedir o Android de fechar a faixa</string>
+    <string name="battery_explain">Na tela que abrir, escolha PromptCue → Não otimizar. Sem isso o sistema derruba a faixa depois de alguns minutos.</string>
+
     <string name="empty_script">Cole um roteiro antes de abrir.</string>
     <string name="permission_needed">Ative "Aparecer sobre outros apps" pro PromptCue.</string>
     <string name="permission_denied">Sem a permissão de sobreposição a faixa não aparece por cima da câmera.</string>

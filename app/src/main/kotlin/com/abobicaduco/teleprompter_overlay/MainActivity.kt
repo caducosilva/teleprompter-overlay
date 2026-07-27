@@ -6,12 +6,14 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.isVisible
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
@@ -51,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         binding.script.doAfterTextChanged { prefs.script = it?.toString().orEmpty() }
 
         binding.open.setOnClickListener { onOpenClicked() }
+        binding.battery.setOnClickListener { requestBatteryExemption() }
         binding.close.setOnClickListener {
             PrompterService.stop(this)
             binding.root.postDelayed({ refreshState() }, 250)
@@ -89,6 +92,26 @@ class MainActivity : AppCompatActivity() {
         binding.open.setText(
             if (PrompterService.isRunning) R.string.reopen_prompter else R.string.open_prompter,
         )
+        binding.battery.isVisible = !isIgnoringBatteryOptimizations()
+    }
+
+    /**
+     * O gerenciamento de energia da Samsung encerra o foreground service
+     * depois de alguns minutos parado — no meio de uma gravação isso derruba
+     * a faixa. A isenção só pode ser concedida pelo usuário, então o botão
+     * fica visível até isso acontecer e some depois.
+     */
+    private fun isIgnoringBatteryOptimizations(): Boolean =
+        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+
+    private fun requestBatteryExemption() {
+        toast(getString(R.string.battery_explain))
+        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        runCatching { startActivity(intent) }.onFailure {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(
+                Uri.parse("package:$packageName"),
+            ))
+        }
     }
 
     private fun onOpenClicked() {
