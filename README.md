@@ -59,3 +59,11 @@ MIT. Veja [LICENSE](LICENSE).
 Contato: abobicarlo@gmail.com
 
 Doações via PIX (chave aleatória): `f74458dc-2a36-49bd-9250-1cef4365ebb8`
+
+## Contato
+
+Autor: Carlos Eduardo
+
+- LinkedIn: https://www.linkedin.com/in/carlos-da-silva20ba5740a
+- Instagram: https://www.instagram.com/caducosilva
+- GitHub: https://github.com/caducosilva
